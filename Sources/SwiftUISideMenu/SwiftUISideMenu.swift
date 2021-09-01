@@ -2,21 +2,25 @@ import SwiftUI
 
 public struct SideMenu<MenuContent: View>: ViewModifier {
     @Binding var isShowing: Bool
+    var disableDragGesture: Bool?
     private let menuContent: () -> MenuContent
     
-    public init(isShowing: Binding<Bool>,
+    public init(isShowing: Binding<Bool>, disableDragGesture: Bool?=nil,
          @ViewBuilder menuContent: @escaping () -> MenuContent) {
         _isShowing = isShowing
+        self.disableDragGesture = disableDragGesture
         self.menuContent = menuContent
     }
     
     public func body(content: Content) -> some View {
         let drag = DragGesture().onEnded { event in
-          if event.location.x < 200 && abs(event.translation.height) < 50 && abs(event.translation.width) > 50 {
-            withAnimation {
-              self.isShowing = event.translation.width > 0
+            if (disableDragGesture == nil || disableDragGesture == false){
+                if event.location.x < 200 && abs(event.translation.height) < 50 && abs(event.translation.width) > 50 {
+                withAnimation {
+                  self.isShowing = event.translation.width > 0
+                }
+              }
             }
-          }
         }
         return GeometryReader { geometry in
           ZStack(alignment: .leading) {
@@ -29,7 +33,13 @@ public struct SideMenu<MenuContent: View>: ViewModifier {
                 .frame(width: geometry.size.width / 2)
                 .transition(.move(edge: .leading))
                 .offset(x: self.isShowing ? 0 : -geometry.size.width / 2)
-          }.gesture(drag)
+           }
+          .gesture(drag)
+          .onTapGesture {
+              if self.isShowing && disableDragGesture == true {
+                  self.isShowing.toggle()
+              }
+          }
         }
     }
 }
@@ -37,9 +47,10 @@ public struct SideMenu<MenuContent: View>: ViewModifier {
 public extension View {
     func sideMenu<MenuContent: View>(
         isShowing: Binding<Bool>,
+        disableDragGesture: Bool?=nil,
         @ViewBuilder menuContent: @escaping () -> MenuContent
     ) -> some View {
-        self.modifier(SideMenu(isShowing: isShowing, menuContent: menuContent))
+        self.modifier(SideMenu(isShowing: isShowing, disableDragGesture: disableDragGesture,menuContent: menuContent))
     }
 }
 
@@ -62,7 +73,7 @@ private struct SideMenuTest: View {
                         .imageScale(.large)
                 }
             ))
-        }.sideMenu(isShowing: $showSideMenu) {
+        }.sideMenu(isShowing: $showSideMenu) { //.sideMenu(isShowing: $showSideMenu, disableDragGesture: true)
             VStack(alignment: .leading) {
               Button(action: {
                 withAnimation {
